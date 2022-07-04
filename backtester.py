@@ -158,10 +158,7 @@ class PerformanceTracker():
         n_long_trades = LONG.shape[0]
         n_short_trades = SHORT.shape[0]
         # Gini Coefficient
-        print('A')
-        print(self.DF_PORTFOLIO)
-        gini_coef = statistics.compute_gini_coefficient(self.DF_PORTFOLIO)
-        print('B')
+        gini_coef = statistics.compute_gini_coefficient(self.DF_CLOSED_POSITIONS)
         # Annualized Sharpe Ratio
         sharpe_ratio = statistics.compute_sharpe_ratio(self.DF_PORTFOLIO['portfolio_value'], timedelta)
         # Annualized Sortino Ratio
@@ -183,7 +180,7 @@ class PerformanceTracker():
         long_expected_roi = statistics.compute_expected_roi(long_win_rate, long_avg_gain, long_avg_loss)
         short_expected_roi = statistics.compute_expected_roi(short_win_rate, short_avg_gain, short_avg_loss)
         # Max drawdowns
-        max_drawdown = statistics.compute_max_drawdown(self.DF_CLOSED_POSITIONS)
+        max_drawdown = statistics.compute_max_drawdown(self.DF_PORTFOLIO['portfolio_value'])
         # Risk of a 10% Ruin
         # ror = statistics.compute_ror(10, global_win_rate, risk_factor, global_avg_loss)
         # Max number of consecutive winned/lost trades
@@ -257,8 +254,8 @@ class Position():
         self.entry_price = ohlc['close_price'].iloc[-1]
         self.size = (1 - fee_rate) * size
         self.fees = fee_rate * size
-        self.pnl = self.fees
-        self.unrealized_pnl = self.fees
+        self.pnl = -self.fees
+        self.unrealized_pnl = -self.fees
         self.status = 'open'
         self.highest_price_seen = self.entry_price
         self.lowest_price_seen = self.entry_price
@@ -275,10 +272,10 @@ class Position():
         if price < self.lowest_price_seen:
             self.lowest_price_seen = price
         if self.side == 'long':
-            self.unrealized_pnl = self.fees + (1 - self.fee_rate) * self.size * (price - self.entry_price) / self.entry_price
+            self.unrealized_pnl = -self.fees + (1 - self.fee_rate) * self.size * (price - self.entry_price) / self.entry_price
             self.drawdown = self.highest_price_seen - price
         if self.side == 'short':
-            self.unrealized_pnl = self.fees + (1 - self.fee_rate) * self.size * (self.entry_price - price) / self.entry_price
+            self.unrealized_pnl = -self.fees + (1 - self.fee_rate) * self.size * (self.entry_price - price) / self.entry_price
             self.drawdown = price - self.lowest_price_seen
         self.max_drawdown = np.max((self.max_drawdown, self.drawdown))
         return
@@ -442,22 +439,23 @@ if __name__ == "__main__":
 
     settings = {
         'timeframe': '4h',
-        'universe': ['BTCUSDT'],
+        'universe': ['BTCUSDT', 'ETHUSDT', 'LINKUSDT'],
         'initial_portfolio_value': 1000,
         'fee_rate': 0.0004
     }
-    start_ts = pd.Timestamp("2021-01-01 00:00:00")
-    end_ts = pd.Timestamp("2022-01-01 00:00:00")
+    start_ts = pd.Timestamp("2020-01-01 00:00:00")
+    end_ts = pd.Timestamp("2021-01-01 00:00:00")
     
-    strategy_settings = {
-        'contract_type': 'long', 
-        'risk_factor': 0.001,
-        'fast_window': 40,
-        'slow_window': 103,
-        'std_window': 20,
-        'breakout_window': 2,
-        'exit_multiplier': 3
-    }
+    # strategy_settings = {
+    #     'contract_type': 'both', 
+    #     'risk_factor': 0.001,
+    #     'fast_window': 40,
+    #     'slow_window': 103,
+    #     'std_window': 20,
+    #     'breakout_window': 2,
+    #     'exit_multiplier': 3
+    # }
+    strategy_settings = dict()
     strategy = strategies.TrendFollowingStrategy(settings=strategy_settings)
     backtester = Backtester(strategy, start_ts, end_ts, settings)
     opt_data = backtester.execute()

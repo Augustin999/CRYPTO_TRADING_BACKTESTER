@@ -6,7 +6,7 @@ from ta.momentum import rsi
 class TrendFollowingStrategy(object):
     def __init__(self, settings):
         self.settings = {
-            'contract_type': 'both', 
+            'contract_type': 'long',
             'risk_factor': 0.001,
             'fast_window': 40,
             'slow_window': 80,
